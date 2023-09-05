@@ -1,0 +1,295 @@
+Uml Class Diagram Code
+
+This code is written in C# by Abdul Wahab Munir Butt.
+*******************************************************
+
+
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using static System.Net.Mime.MediaTypeNames;
+
+// Interface for invariant check
+interface InvariantCheck
+{
+    bool inv();
+    void invTest(object obj);
+}
+
+// TransactionType enum
+enum TransactionType
+{
+    DEPOSIT,
+    WITHDRAWAL
+}
+
+// AccNum class
+class AccNum : InvariantCheck
+{
+    private const int LENGTH = 8;
+    private string value;
+
+    public AccNum(string valueIn)
+    {
+        value = valueIn;
+        invTest(this);
+    }
+
+    public bool inv()
+    {
+        return value.Length == LENGTH;
+    }
+
+    public override bool Equals(object accNumIn)
+    {
+        AccNum num = (AccNum)accNumIn;
+        return value.Equals(num.value);
+    }
+
+    public override int GetHashCode()
+    {
+        return value.GetHashCode();
+    }
+
+    public override string ToString()
+    {
+        return value;
+    }
+
+    public void invTest(object obj)
+    {
+        if (!inv())
+        {
+            throw new InvalidOperationException("Invariant check failed.");
+        }
+    }
+}
+
+// Details class
+class Details
+{
+    public string name;
+    public string address;
+
+    public Details(string nameIn, string addressIn)
+    {
+        name = nameIn;
+        address = addressIn;
+    }
+
+    public override bool Equals(object detailsIn)
+    {
+        Details details = (Details)detailsIn;
+        return name.Equals(details.name) && address.Equals(details.address);
+    }
+
+    public override string ToString()
+    {
+        return $"{name}\n{address}";
+    }
+}
+
+// Transaction class
+class Transaction : InvariantCheck
+{
+    public readonly DateTime date;
+    public readonly double amount;
+    public readonly TransactionType transactionType;
+
+    public Transaction(DateTime dateIn, double amountIn, TransactionType typeIn)
+    {
+        date = dateIn;
+        amount = amountIn;
+        transactionType = typeIn;
+        invTest(this);
+    }
+
+    public bool inv()
+    {
+        return amount > 0;
+    }
+
+    public override bool Equals(object transactionIn)
+    {
+        Transaction transaction = (Transaction)transactionIn;
+        return date.Equals(transaction.date) && amount == transaction.amount && transactionType == transaction.transactionType;
+    }
+
+    public override string ToString()
+    {
+        return $"mk-Transaction({date},{amount},{transactionType})";
+    }
+
+    public void invTest(object obj)
+    {
+        if (!inv())
+        {
+            throw new InvalidOperationException("Invariant check failed.");
+        }
+    }
+}
+
+// Account class
+class Account : InvariantCheck
+{
+    public AccNum number;
+    public Details details;
+    public double balance;
+    public double limit;
+    public List<Transaction> transactions;
+
+    public bool inv()
+    {
+        return limit >= 0 && balance >= -limit && balanceOf(transactions) == balance;
+    }
+
+    public Account(AccNum numberIn, Details detailsIn, double balanceIn, double limitIn, List<Transaction> transIn)
+    {
+        number = numberIn;
+        details = detailsIn;
+        balance = balanceIn;
+        limit = limitIn;
+        transactions = transIn;
+        invTest(this);
+    }
+
+    private double sum(List<Transaction> seqIn)
+    {
+        double total = 0;
+        foreach (var seq in seqIn)
+        {
+            total += seq.amount;
+        }
+        return total;
+    }
+
+    private double balanceOf(List<Transaction> transIn)
+    {
+        List<Transaction> dep = new List<Transaction>();
+        List<Transaction> withd = new List<Transaction>();
+
+        foreach (var trans in transIn)
+        {
+            if (trans.transactionType == TransactionType.DEPOSIT)
+            {
+                dep.Add(trans);
+            }
+            else if (trans.transactionType == TransactionType.WITHDRAWAL)
+            {
+                withd.Add(trans);
+            }
+        }
+
+        return sum(dep) - sum(withd);
+    }
+
+    public override bool Equals(object accountIn)
+    {
+        Account account = (Account)accountIn;
+        return number.Equals(account.number) && details.Equals(account.details) && balance == account.balance && limit == account.limit && transactions.Equals(account.transactions);
+    }
+
+    public override string ToString()
+    {
+        return $"mk-Account({number},{details},{balance},{limit},{transactions})";
+    }
+
+    public void invTest(object obj)
+    {
+        if (!inv())
+        {
+            throw new InvalidOperationException("Invariant check failed.");
+        }
+    }
+}
+
+// AccountSys class
+class AccountSys : InvariantCheck
+{
+    private Dictionary<AccNum, Account> accounts = new Dictionary<AccNum, Account>();
+
+    public bool inv()
+    {
+        foreach (var num in accounts.Keys)
+        {
+            if (!num.Equals(accounts[num].number))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void addAccount(AccNum numberIn, Details detailsIn, double limitIn)
+    {
+        if (!accounts.ContainsKey(numberIn) && limitIn >= 0)
+        {
+            Account acc = new Account(numberIn, detailsIn, 0, limitIn, new List<Transaction>());
+            accounts.Add(numberIn, acc);
+            invTest(this);
+        }
+    }
+
+    public void removeAccount(AccNum numberIn)
+    {
+        if (accounts.ContainsKey(numberIn))
+        {
+            accounts.Remove(numberIn);
+            invTest(this);
+        }
+    }
+
+    // Other methods similar to Java implementation
+
+    // ...
+
+    public bool contains(AccNum numberIn)
+    {
+        return accounts.ContainsKey(numberIn);
+    }
+
+    public bool isEmpty()
+    {
+        return accounts.Count == 0;
+    }
+
+    public int getTotal()
+    {
+        return accounts.Count;
+    }
+
+    public void invTest(object obj)
+    {
+        if (!inv())
+        {
+            throw new InvalidOperationException("Invariant check failed.");
+        }
+    }
+}
+
+// BankApplication class
+class BankApplication
+{
+    public static void Main(string[] args)
+    {
+        System.Windows.Forms.Application.Run(new BankForm());
+    }
+}
+
+// BankForm class (Windows Forms application)
+class BankForm : Form
+{
+    private AccountSys bank;
+
+    public BankForm()
+    {
+        bank = new AccountSys();
+        InitializeUI();
+    }
+
+    private void InitializeUI()
+    {
+        // Set up UI components and event handlers
+        // ...
+    }
+}
